@@ -2,22 +2,47 @@
   "name": "dsh-claude-agent",
   "version": "0.1.0",
   "description": "Claude 长驻实体插件：通过 @anthropic-ai/claude-agent-sdk（长驻）维护会话，暴露 chat / startConversation / pull 接口（多轮会话、流式），供编排层（multi-role-debate）或直接对话调用。",
-  "keywords": ["deepseek-harness", "dsh", "cordis", "plugin", "claude", "agent", "entity"],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "cordis",
+    "plugin",
+    "claude",
+    "agent",
+    "entity"
+  ],
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "exports": {
-    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
     "./package.json": "./package.json"
   },
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" }
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   },
-  "files": ["lib/index.js", "lib/types/**/*.d.ts", "cordis.patch.yml", "README.md", "LICENSE"],
+  "files": [
+    "lib/index.js",
+    "lib/types/**/*.d.ts",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@anthropic-ai/claude-agent-sdk": "0.3.220"
   },
   "license": "MIT",
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "url": "https://github.com/jiang12345-code/dsh-multi-role-debate.git",
+    "type": "git"
+  }
 }

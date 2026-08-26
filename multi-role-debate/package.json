@@ -2,7 +2,17 @@
   "name": "multi-role-debate",
   "version": "0.2.0",
   "description": "多角色并行论证 + 单 agent 直接对话：基于真实 Codex/Claude CLI 流（stream-json）并行跑多角色论证，DSH 主会话作为第三家独立厂商做 Judge/Aggregator；并提供 Obsidian 式的直接对话入口。",
-  "keywords": ["deepseek-harness", "dsh", "cordis", "plugin", "multi-agent", "moa", "debate", "codex", "claude"],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "cordis",
+    "plugin",
+    "multi-agent",
+    "moa",
+    "debate",
+    "codex",
+    "claude"
+  ],
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -18,7 +28,9 @@
     "./package.json": "./package.json"
   },
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
@@ -52,5 +64,11 @@
     "typescript": "^5.9.0"
   },
   "license": "MIT",
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "url": "https://github.com/jiang12345-code/dsh-multi-role-debate.git",
+    "type": "git"
+  }
 }

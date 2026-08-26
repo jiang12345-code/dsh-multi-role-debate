@@ -2,10 +2,22 @@
   "name": "dsh-multi-role-debate",
   "version": "1.0.0",
   "description": "多角色并行论证 + 单 Agent 直接对话 + DSH Judge 汇总 + 结果回对话 —— DSH 聚合插件（一次安装即复用 codex/claude 多模型论证能力）",
-  "keywords": ["deepseek-harness", "dsh", "plugin", "bundle", "multi-agent", "debate", "codex", "claude", "judge"],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "bundle",
+    "multi-agent",
+    "debate",
+    "codex",
+    "claude",
+    "judge"
+  ],
   "type": "module",
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" }
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   },
   "dependencies": {
     "dsh-codex-agent": "file:../dsh-codex-agent",
@@ -17,5 +29,9 @@
     "README.md",
     "LICENSE"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/jiang12345-code/dsh-multi-role-debate.git",
+    "type": "git"
+  }
 }
