@@ -62,5 +62,12 @@ pwsh install.ps1 -Profile web --uninstall   # 撤销：恢复 3 个单独条目
 ## 已知坑 / 项目记忆
 改写代码前先读本项目根 `AGENTS.md`（含 7 条血泪坑：`pull()` 增量累加、`agent.followup()` 回对话、触发器跳过插件消息、CSS/SVG、router/spawn、模型路由、无 JSX；以及会话日志安全红线）。
 
+## 文档 / 开发
+- [`CHANGELOG.md`](CHANGELOG.md) — 版本变更
+- [`docs/INSTALL.md`](docs/INSTALL.md) — 独立安装指南（含打包/发布步骤）
+- [`docs/example-config.json`](docs/example-config.json) — 模型配置 schema 示例
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — 开发/贡献指引
+- [`AGENTS.md`](AGENTS.md) — 项目记忆 SSOT（自动注入）
+
 ## License
 MIT
