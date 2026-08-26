@@ -12,3 +12,6 @@ test-claude-agent.mjs
 restart-dsh.ps1
 role-debate/
 # 会话日志与 profile 副本不在源码树内（实际在 ~/.dsh 下，绝不提交）
+
+docs/market-*.prep.*
+
