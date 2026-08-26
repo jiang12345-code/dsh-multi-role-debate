@@ -20,9 +20,9 @@
     }
   },
   "dependencies": {
-    "dsh-codex-agent": "file:../dsh-codex-agent",
-    "dsh-claude-agent": "file:../dsh-claude-agent",
-    "multi-role-debate": "file:../multi-role-debate"
+    "dsh-codex-agent": "^0.1.0",
+    "dsh-claude-agent": "^0.1.0",
+    "multi-role-debate": "^0.2.0"
   },
   "files": [
     "cordis.patch.yml",
