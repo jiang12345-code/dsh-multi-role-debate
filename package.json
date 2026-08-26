@@ -1,0 +1,12 @@
+{
+  "name": "dsh-multi-role-debate-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "多角色并行论证 DSH 插件 monorepo（聚合包 + 3 个组件包）",
+  "workspaces": [
+    "dsh-codex-agent",
+    "dsh-claude-agent",
+    "multi-role-debate",
+    "dsh-multi-role-debate"
+  ]
+}

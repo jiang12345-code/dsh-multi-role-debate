@@ -1,0 +1,14 @@
+node_modules/
+*.log
+*.zstd
+*.tgz
+.DS_Store
+# —— 本仓库为"多角色辩论插件"分发用：排除调试脚本与旧包裹 ——
+check_*.mjs
+inspect_bad.mjs
+scan_sessions.mjs
+start_tunnel.mjs
+test-claude-agent.mjs
+restart-dsh.ps1
+role-debate/
+# 会话日志与 profile 副本不在源码树内（实际在 ~/.dsh 下，绝不提交）

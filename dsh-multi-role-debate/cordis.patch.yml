@@ -1,0 +1,6 @@
+# dsh-multi-role-debate —— 聚合包
+# 一次安装即可注册 3 个组件 bundle（顺序：实体在前，编排在后）。
+- insert:
+    - name: dsh-codex-agent
+    - name: dsh-claude-agent
+    - name: multi-role-debate

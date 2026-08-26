@@ -1,0 +1,4 @@
+# multi-role-debate 安装清单
+# dsh plugin add 时把插件行插入 host composition
+- insert:
+    - name: multi-role-debate
