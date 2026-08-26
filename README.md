@@ -1,8 +1,25 @@
 # 多角色并行论证 DSH 插件（multi-role-debate）
 
+[![CI](https://github.com/jiang12345-code/dsh-multi-role-debate/actions/workflows/ci.yml/badge.svg)](https://github.com/jiang12345-code/dsh-multi-role-debate/actions/workflows/ci.yml)
+[![dsh-plugin](https://img.shields.io/badge/DSH-plugin-blue?logo=github)](https://github.com/topics/dsh-plugin)
+
 在 DeepSeek Harness 里跑一套**多角色并行论证 + 单 Agent 直接对话**系统：真实 **Codex** 与 **Claude** CLI 并行论证，**DSH 主会话模型（Judge）**做第三方汇总并回对话，另有 Obsidian 式单 Agent 直接对话。
 
+> ⚠️ **前置依赖（必读）**：本插件是真实 **Codex** 与 **Claude** CLI 的**薄封装，不内置二进制**。使用前你的机器必须已安装：
+> - **Codex CLI** —— `@openai/codex`（提供 `codex` 命令；DSH 侧须能经 `node <@openai/codex/bin/codex.js>` spawn）
+> - **Claude Agent SDK** —— `@anthropic-ai/claude-agent-sdk-*`（或 `claude` 命令）
+> 缺这两者，插件能装上但"开始论证/直接对话"起不来。
+
 > 一套能调用 codex/claude、实现多模型论证的实体功能。`dsh-multi-role-debate` 是**聚合安装包**：装它 = 装齐下面全部 3 个组件。
+
+## 效果演示
+| 多角色并行论证 | 模型自由配置 | 结果回对话 |
+|---|---|---|
+| <img src="docs/debate.png" width="420" alt="多角色并行论证面板"/> | <img src="docs/config.png" width="420" alt="模型配置面板"/> | <img src="docs/result.png" width="420" alt="结果回对话"/> |
+
+- **论证面板**：Codex / Claude 两栏并行流式 + DSH 汇总，各自徽章（完成/Streaming）+ 字数 + markdown 正文。
+- **模型配置**：⚙ 弹窗，Judge 模型下拉 + 推理档 + maxTokens，Codex/Claude 模型自由填，保存持久化。
+- **结果回对话**：论证完成后，DSH 主会话自动把汇总呈现到对话流（`agent.followup()`，turn 安全）。
 
 ## 组成
 | 包 | 作用 |
@@ -19,11 +36,7 @@
 - **UI**：GitHub Dark 主题，手写 CSS + `React.createElement`（无 JSX/Tailwind）。
 
 ## 前置依赖（重要）
-- **DSH web profile**（`dsh web` 运行环境）。
-- 本机已安装：
-  - **Codex CLI** —— `@openai/codex`（`codex` 命令；spawn 走 `node <@openai/codex/bin/codex.js>`）
-  - **Claude Agent SDK** —— `@anthropic-ai/claude-agent-sdk-win32-x64` / `claude` 命令
-- 本插件是这两个真实 CLI 的**薄封装**，**不内置二进制**。
+> 见顶部「⚠️ 前置依赖（必读）」：本机需已装 **Codex CLI**（`@openai/codex`）与 **Claude Agent SDK**（`@anthropic-ai/claude-agent-sdk`）。本插件是这两个真实 CLI 的薄封装，不内置二进制。
 
 ## 安装（用户侧）
 **方式一 · 一键脚本（推荐，Windows）**：在仓库根执行

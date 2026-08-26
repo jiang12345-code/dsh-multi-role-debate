@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Syntax & JSON validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Node syntax check (host & client)
+        run: |
+          set -e
+          for f in \
+            dsh-codex-agent/lib/index.js \
+            dsh-claude-agent/lib/index.js \
+            multi-role-debate/lib/index.js \
+            multi-role-debate/lib/client.js ; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Validate package.json manifest JSON
+        run: |
+          set -e
+          for p in \
+            package.json \
+            dsh-codex-agent/package.json \
+            dsh-claude-agent/package.json \
+            multi-role-debate/package.json \
+            dsh-multi-role-debate/package.json ; do
+            echo "JSON.parse $p"
+            node -e "JSON.parse(require('fs').readFileSync('$p','utf8'))"
+          done
+
+      - name: Validate cordis patch YAML exists & inserts rows
+        run: |
+          set -e
+          for y in \
+            dsh-codex-agent/cordis.patch.yml \
+            dsh-claude-agent/cordis.patch.yml \
+            multi-role-debate/cordis.patch.yml \
+            dsh-multi-role-debate/cordis.patch.yml ; do
+            test -f "$y" && echo "ok: $y"
+          done
+          grep -q "dsh-codex-agent" dsh-multi-role-debate/cordis.patch.yml
+          grep -q "multi-role-debate" dsh-multi-role-debate/cordis.patch.yml
+          echo "aggregator patch references components: ok"
