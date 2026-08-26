@@ -1,0 +1,10 @@
+{
+  "judge": {
+    "provider": "deepseek-official",
+    "model": "deepseek-v4-pro",
+    "reasoningEffort": "high",
+    "maxTokens": 4096
+  },
+  "codexModel": "",
+  "claudeModel": ""
+}
