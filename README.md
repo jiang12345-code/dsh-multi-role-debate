@@ -26,22 +26,20 @@
 - 本插件是这两个真实 CLI 的**薄封装**，**不内置二进制**。
 
 ## 安装（用户侧）
-1. 克隆本仓库（或拿到 `dsh-multi-role-debate` 目录）。
-2. 在仓库根 `npm install`（workspaces 会把聚合包与 3 个组件一起装好；聚合包用 `file:../` 依赖本地组件）。
-3. 把聚合包装进你的 DSH profile 并注册。以 web profile 为例：
-
-```bash
-# 在 profile 目录安装聚合包（会带进 3 个组件）
-cd ~/.dsh/profiles/web
-npm install /path/to/repo/dsh-multi-role-debate
-
-# 把聚合包加进 dsh.profile.bundles（加在列表末尾，实体顺序由聚合包 patch 保证）
-# 编辑 ~/.dsh/profiles/web/package.json，在 dsh.profile.bundles 追加 "dsh-multi-role-debate"
+**方式一 · 一键脚本（推荐，Windows）**：在仓库根执行
+```powershell
+pwsh install.ps1 -Profile web        # 默认安装到 web profile；用 -Profile <name> 换
+pwsh install.ps1 -Profile web --uninstall   # 撤销：恢复 3 个单独条目
 ```
+脚本会：把 `dsh-codex-agent / dsh-claude-agent / multi-role-debate / dsh-multi-role-debate` 复制进目标 profile 的 `node_modules`，并把 `dsh.profile.bundles` 里的 3 个单独条目换成聚合包一条。然后**重启 DSH**。
 
-4. **重启 DSH**，在对话视图顶部出现"多角色论证" tab 即安装成功。
+**方式二 · 手工（参考）**：
+1. 克隆本仓库（或拿到 `dsh-multi-role-debate` 目录）。
+2. 把 4 个包装进你的 DSH profile：`cd ~/.dsh/profiles/web && npm install /path/to/repo/<包>`（或复制到 `node_modules`）。
+3. 编辑 `~/.dsh/profiles/web/package.json`，在 `dsh.profile.bundles` 把旧的 `dsh-codex-agent`/`dsh-claude-agent`/`multi-role-debate` 三条去掉，追加 `"dsh-multi-role-debate"`。
+4. **重启 DSH**；对话视图顶部出现"多角色论证" tab 即成功。
 
-> 说明：聚合包 patch 会插入 `dsh-codex-agent`、`dsh-claude-agent`、`multi-role-debate` 三行；若你的 profile 之前已单独添加过它们，请去掉那 3 个旧条目，只保留聚合包一条，避免重复。
+> 说明：聚合包 `cordis.patch.yml` 会插入 `dsh-codex-agent`、`dsh-claude-agent`、`multi-role-debate` 三行（实体在前、编排在后），一次安装即注册全部组件。**前置依赖**：本机需已装 Codex CLI（`@openai/codex`）与 Claude Agent SDK（`@anthropic-ai/claude-agent-sdk`）——本插件是这两个真实 CLI 的薄封装，不内置二进制。
 
 ## 使用
 - **tab（多角色论证）**：输入问题 → 开始论证；或切"直接对话"点选 Codex/Claude。
