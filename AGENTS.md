@@ -21,7 +21,7 @@
 - 安装（用户侧，见根 README）：clone → `pwsh install.ps1 -Profile web`（一键复制 4 包 + 换 bundles）→ 重启 DSH。
 - **前置依赖**：本机需已装 Codex CLI (`@openai/codex`) 与 Claude Agent SDK；插件是这两者的薄封装，不内置二进制。
 - `.gitignore` 已排除调试脚本（check_*.mjs 等）、`role-debate` 旧包裹、node_modules。
-- ⚠️ 分发信任级验证：聚合包结构已验（dsh-base 同款模式 + `--dump-config` 组合等价）；完整"装一个包即起 3 组件"的端到端需在空闲 profile 上实测一次再对外分享。
+- ⚠️ 分发信任级验证：**聚合包组合已验证（已闭环）**——用 `dsh --profile mrd-test --dump-config`（空闲 profile，junction 共享依赖、非破坏性）确认 `dsh-multi-role-debate` 的 patch 正确插入 `dsh-codex-agent`/`dsh-claude-agent`/`multi-role-debate` 三行（count=3）；"装一个包即起整套"的组合层面已证明。（若要再稳，可在干净机器上真机 `install.ps1` 启动一次。）
 
 ## 架构与目录（D:\dsh\技术问题解决）
 三个独立 npm 插件包（用户选定架构 A：利于维护）：
