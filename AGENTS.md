@@ -15,13 +15,13 @@
 - 会话日志健康：`check_health.mjs` 基线 `ok=35 FAIL=0`。
 
 ## 📦 分发/分享（可安装复用）
-- 仓库：**https://github.com/jiang12345-code/dsh-multi-role-debate**（PUBLIC，含 topic `dsh-plugin`/`deepseek-harness`/`multi-agent`/`debate`/`llm`/`codex`/`claude`/`orchestration`，tag `v1.0.0`）。
-- 本工作区是 **Git monorepo**（root commit）：3 个组件包 + 聚合包 `dsh-multi-role-debate` + 根 `README.md`/`package.json`/`LICENSE`/`AGENTS.md` + 一键安装 `install.ps1` + `docs/` 演示截图 + `.github/workflows/ci.yml`（CI：node --check + JSON 校验，已验证通过）。
-- **聚合包** `dsh-multi-role-debate`（patch-only + `file:` 依赖 3 组件）：`cordis.patch.yml` 插入 `dsh-codex-agent`/`dsh-claude-agent`/`multi-role-debate` 三行（实体在前），一次安装即注册（模式同 `dsh-base`）。
-- 安装（用户侧，见根 README）：clone → `pwsh install.ps1 -Profile web`（一键复制 4 包 + 换 bundles）→ 重启 DSH。
-- **前置依赖**：本机需已装 Codex CLI (`@openai/codex`) 与 Claude Agent SDK；插件是这两者的薄封装，不内置二进制。
-- `.gitignore` 已排除调试脚本（check_*.mjs 等）、`role-debate` 旧包裹、node_modules。
-- ⚠️ 分发信任级验证：**聚合包组合已验证（已闭环）**——用 `dsh --profile mrd-test --dump-config`（空闲 profile，junction 共享依赖、非破坏性）确认 `dsh-multi-role-debate` 的 patch 正确插入 `dsh-codex-agent`/`dsh-claude-agent`/`multi-role-debate` 三行（count=3）；"装一个包即起整套"的组合层面已证明。（若要再稳，可在干净机器上真机 `install.ps1` 启动一次。）
+- 仓库：**https://github.com/jiang12345-code/dsh-multi-role-debate**（PUBLIC，topic `dsh-plugin` 等 8 个，tag `v1.0.0`，**11+ commits，CI 通过**）。
+- **npm 已发布 4 包**：`dsh-codex-agent@0.1.0` / `dsh-claude-agent@0.1.0` / `multi-role-debate@0.2.0` / `dsh-multi-role-debate@1.0.0`（`registry.npmjs.org`，均可安装；聚合包依赖版本化的组件包）。
+- ⏳ **awesome-dsh-plugin 市场收录 PR 待提**（仓库满 1 天后，即 2026-08-27 上午）：fork awesome-dsh-plugin → 加 `data/plugins/jiang12345-code__dsh-multi-role-debate.yml`（category=workflow，en+zh 描述）+ `data/screenshots.json`（docs/ 三图）→ 重生成 README → 提 PR。
+- 本工作区是 **Git monorepo**：3 组件包 + 聚合包 + 根 `README`/`package.json`/`LICENSE`/`AGENTS.md`/`CHANGELOG.md`/`CONTRIBUTING.md` + 一键安装 `install.ps1` + `docs/`（演示截图+示例配置+安装指南）+ `.github/workflows/ci.yml`。npm/market 预备用 `docs/market-*.prep.*` 已 gitignore。
+- **聚合包** `dsh-multi-role-debate`：`cordis.patch.yml` 插入 3 组件行（实体在前）。依赖已从 `file:` 改为**版本化** `^0.1.0`/`^0.2.0`（npm 发布需要；workspaces 亦按名解析本地）。
+- 安装（用户侧）：clone → `pwsh install.ps1 -Profile web` → 重启 DSH。**前置依赖**：本机需已装 Codex CLI + Claude Agent SDK。
+- ⚠️ 分发信任级验证：**聚合包组合已验证（闭环）**（`dsh --profile mrd-test --dump-config` 组合出 3 行 count=3）；**且已在用户自己的 DSH 以聚合插件形态真实运行**（辩论 tab 正常、`config.get` ok、`check_health` ok=50 FAIL=0）。
 
 ## 架构与目录（D:\dsh\技术问题解决）
 三个独立 npm 插件包（用户选定架构 A：利于维护）：
