@@ -15,12 +15,13 @@
 - 会话日志健康：`check_health.mjs` 基线 `ok=35 FAIL=0`。
 
 ## 📦 分发/分享（可安装复用）
-- 本工作区已是 **Git monorepo**（root commit `dsh-multi-role-debate-monorepo`）：3 个组件包 + 聚合包 `dsh-multi-role-debate` + 根 `README.md`/`package.json`/`LICENSE`/`AGENTS.md`。
+- 仓库：**https://github.com/jiang12345-code/dsh-multi-role-debate**（PUBLIC，含 topic `dsh-plugin`/`deepseek-harness`/`multi-agent`/`debate`/`llm`/`codex`/`claude`/`orchestration`，tag `v1.0.0`）。
+- 本工作区是 **Git monorepo**（root commit）：3 个组件包 + 聚合包 `dsh-multi-role-debate` + 根 `README.md`/`package.json`/`LICENSE`/`AGENTS.md` + 一键安装 `install.ps1` + `docs/` 演示截图 + `.github/workflows/ci.yml`（CI：node --check + JSON 校验，已验证通过）。
 - **聚合包** `dsh-multi-role-debate`（patch-only + `file:` 依赖 3 组件）：`cordis.patch.yml` 插入 `dsh-codex-agent`/`dsh-claude-agent`/`multi-role-debate` 三行（实体在前），一次安装即注册（模式同 `dsh-base`）。
-- 安装（用户侧，见根 README）：clone → 根 `npm install` → profile `npm install <聚合包路径>` → `dsh.profile.bundles` 加 `dsh-multi-role-debate`（把旧的 3 个单独条目去掉）→ 重启 DSH。
-- **前置依赖**：本机已装 Codex CLI (`@openai/codex`) 与 Claude Agent SDK；插件是这两者的薄封装，不内置二进制。
+- 安装（用户侧，见根 README）：clone → `pwsh install.ps1 -Profile web`（一键复制 4 包 + 换 bundles）→ 重启 DSH。
+- **前置依赖**：本机需已装 Codex CLI (`@openai/codex`) 与 Claude Agent SDK；插件是这两者的薄封装，不内置二进制。
 - `.gitignore` 已排除调试脚本（check_*.mjs 等）、`role-debate` 旧包裹、node_modules。
-- ⚠️ 分发信任级验证：聚合包结构已验（dsh-base 同款模式）；完整"装一个包即起 3 组件"的端到端 boot 需在空闲 profile 上实测一次再对外分享。
+- ⚠️ 分发信任级验证：聚合包结构已验（dsh-base 同款模式 + `--dump-config` 组合等价）；完整"装一个包即起 3 组件"的端到端需在空闲 profile 上实测一次再对外分享。
 
 ## 架构与目录（D:\dsh\技术问题解决）
 三个独立 npm 插件包（用户选定架构 A：利于维护）：
