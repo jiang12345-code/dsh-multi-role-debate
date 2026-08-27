@@ -2,6 +2,8 @@
 
 本文件由 DSH 自动注入，是"新会话知道这个项目"的唯一可靠途径。改动代码前先读此文件；跨会话别丢的事实同步更新到这里。
 
+> ⚠️ **遇到 bug / 异常行为时，第一动作（两条铁律）**：① 读 [`LESSONS_LEARNED.md`](LESSONS_LEARNED.md)（踩坑 SSOT）；② **检索历史会话轨迹**（`scan_discover` 或 `session.list` + 关键词，比如 `error`/`404`/插件名）——这次"面板空白"的完整失败与修复过程就在历史轨迹里，翻 5 分钟省 3 小时。修完非平凡 bug 必须回写 LESSONS_LEARNED.md 一条（现象/根因/修复/最快诊断法）。
+
 ## 一句话定位
 在 DeepSeek Harness（DSH）里跑一套**多角色并行论证 + 单 Agent 直接对话**系统：Codex 与 Claude 真实 CLi 并行论证，DSH 主会话模型（Judge）做第三方汇总并回对话，另有 Obsidian 式单 Agent 直接对话。
 
@@ -28,6 +30,8 @@
 - `dsh-codex-agent\`  — host-only 实体，长驻 `codex app-server --stdio`（JSON-RPC 2.0）进程。
 - `dsh-claude-agent\` — host-only 实体，长驻 `claude-agent-sdk` query()。
 - `multi-role-debate\`  — 编排 + 前端（`inject:['webServer']`，`ctx.get('codexAgent'/'claudeAgent')` 取两实体；`lib/index.js` = host，`lib/client.js` = conversation.view slot UI）。
+- `dsh-openrouter-free\` — OpenRouter 免费模型面板（2026-08 新增，已部署进 profile bundles）：host 拉取 `openrouter.ai/api/v1/models` 过滤免费（pricing.prompt==='0'&&completion==='0'），经 `ctx.settings` 写 `llm-pi-ai.providers.openrouter.models`（保留手工条目）+ `agent-default-model` 整节替换；client = 「免费模型」slot 标签页一键切换。API 前缀 `/__orfree/api`。**关键机制**：llm-pi-ai 的 settings 分节更新后下一次请求即生效、无需重启；不支持推理的模型切换时必须摘掉 reasoningEffort（否则 UNSUPPORTED_REASONING_EFFORT）。
+- `dsh-self-restart\` — 自助重启插件 v0.2.0（2026-08 新增，已部署进 profile bundles）：host 固化「schtasks /RL HIGHEST 一次性任务 → taskkill /F/T 树杀 3080 监听进程树 → 端口释放确认 → Start-ScheduledTask dsh-web-service → 存活探测」全链路为 API，**宿主非提权时自动降级 WMI 分离 spawn**（Win32_Process.Create 父进程是 WmiPrvSE，不随宿主死亡）；client 每 4s ping `/__dsh-restart/api`，连续 2 次失败显示全屏遮罩、恢复后自动 reload。**任务续跑（v0.2.0）**：重启前 `task.add({title,detail,sessionId})` 登记 → 重启后 host 开机 8s 自动对原会话 `agent.followup()` 注入续跑指令 → 前端 toast 提示；约定：**agent 调度重启前必须把在跑任务登记进 ledger**（task.add），完成后 task.done。API：schedule/status/ping/task.add/task.done/task.list（POST /__dsh-restart/api）。配置 `~/.dsh/self-restart/config.json`，任务账本 `~/.dsh/self-restart/tasks.json`，日志 `~/.dsh/self-restart/restart.log`。**agent 触发**：`Invoke-RestMethod http://127.0.0.1:3080/__dsh-restart/api -Method Post -ContentType 'application/json' -Body '{"method":"schedule","args":{"delayMs":15000,"reason":"..."}}'`。⚠️ 安全双坑：① 杀提权 DSH 进程，普通权限 Stop-Process 静默失败，须提权计划任务或（宿主本身非提权时）同用户直接树杀/WMI；② host-auth 守卫只包 `/api` 前缀，自定义前缀路由不在鉴权内，危险操作须自建 loopback 围栏（本插件 schedule/task 写操作仅限 127.0.0.1）。
 
 ## 部署形态（重要 · 运行期生效对象）
 - 源码在 `D:\dsh\技术问题解决\<包>\lib\{index,client}.js`。
@@ -62,3 +66,4 @@
 ## 维护约定
 - 本文件只写稳定事实与"去哪找"，不复制架构文档全文、不写明文敏感值。
 - 会话结束时若新增跨会话事实，同步更新本文件。
+

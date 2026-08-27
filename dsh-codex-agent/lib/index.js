@@ -27,10 +27,19 @@ export const inject = ['subprocess']
 
 // codex 是 npm .ps1 shim（node 无法直接 spawn），用 node 跑 codex.js（官方 provider 同法）
 // 解析路径：npm 全局优先，回退 profile node_modules
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import os from 'node:os'
 const __dirname = dirname(fileURLToPath(import.meta.url))
+// 线程映射持久化（DSH 重启后仍可 thread/resume，保住持久对话）
+const THREADS_PATH = join(os.homedir(), '.dsh', 'codex-agent', 'threads.json')
+function loadThreads() {
+  try { return JSON.parse(readFileSync(THREADS_PATH, 'utf8')) } catch { return {} }
+}
+function saveThreads(obj) {
+  try { mkdirSync(path.dirname(THREADS_PATH), { recursive: true }); writeFileSync(THREADS_PATH, JSON.stringify(obj, null, 2)) } catch { /* ignore */ }
+}
 function resolveCodexJs() {
   const candidates = [
     'C:/Users/73618/AppData/Roaming/npm/node_modules/@openai/codex/bin/codex.js',
@@ -125,7 +134,17 @@ class CodexAgent {
     this._process = null
     this._threadId = null
     this._threads = new Map()           // chatKey -> threadId （能力 2 多轮续接）
+    // 开机 hydrate：恢复上次运行的线程映射（thread/resume 后 codex 仍有记忆）
+    for (const [key, threadId] of Object.entries(loadThreads())) {
+      if (threadId) this._threads.set(key, threadId)
+    }
     this._conversations = new Map()   // convId -> { threadId, turnId, text, cursor, status }
+  }
+
+  persistThreads() {
+    var obj = {}
+    this._threads.forEach(function (v, k) { obj[k] = v })
+    saveThreads(obj)
   }
 
   /** 启动长驻 codex app-server --stdio（懒启动，首次调用时） */
@@ -218,6 +237,7 @@ class CodexAgent {
     conv.status = 'done'
     const effectiveKey = chatKey || ('codex-chat-' + convId)
     this._threads.set(effectiveKey, threadId)
+    this.persistThreads()
     return { convId, chatKey: effectiveKey, text: conv.text }
   }
 

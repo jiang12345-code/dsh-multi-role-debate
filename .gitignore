@@ -15,3 +15,11 @@ role-debate/
 
 docs/market-*.prep.*
 
+
+_market-pr/
+dsh-openrouter-free/
+dsh-self-restart/
+test-orfree-load.mjs
+docs/site-*.png
+docs/panel-*.png
+docs/config-entry.png
