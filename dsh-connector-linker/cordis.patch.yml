@@ -1,0 +1,4 @@
+patch:
+  - op: add
+    after: dsh-multi-role-debate
+    patch: dsh-connector-linker

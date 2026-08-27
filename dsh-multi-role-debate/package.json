@@ -1,6 +1,6 @@
 {
   "name": "dsh-multi-role-debate",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "多角色并行论证 + 单 Agent 直接对话 + DSH Judge 汇总 + 结果回对话 —— DSH 聚合插件（一次安装即复用 codex/claude 多模型论证能力）",
   "keywords": [
     "deepseek-harness",
@@ -20,9 +20,9 @@
     }
   },
   "dependencies": {
-    "dsh-codex-agent": "^0.1.0",
-    "dsh-claude-agent": "^0.1.0",
-    "multi-role-debate": "^0.2.0"
+    "dsh-codex-agent": "^0.2.0",
+    "dsh-claude-agent": "^0.2.0",
+    "multi-role-debate": "^0.3.0"
   },
   "files": [
     "cordis.patch.yml",

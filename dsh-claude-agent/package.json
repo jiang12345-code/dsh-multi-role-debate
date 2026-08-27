@@ -1,6 +1,6 @@
 {
   "name": "dsh-claude-agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Claude 长驻实体插件：通过 @anthropic-ai/claude-agent-sdk（长驻）维护会话，暴露 chat / startConversation / pull 接口（多轮会话、流式），供编排层（multi-role-debate）或直接对话调用。",
   "keywords": [
     "deepseek-harness",

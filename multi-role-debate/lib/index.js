@@ -383,6 +383,26 @@ export function apply(ctx) {
       }
       return { ok: true, provider, models: models.map(m => ({ id: (m && m.id) || m, name: (m && m.name) || m })) }
     },
+    // 全部 DSH provider×model 候选（供 Codex/Claude 角色下拉；值形如 dsh:<provider>/<model>，
+    // role.chat 对 dsh: 前缀走 DSH 引擎直驱并保留跨轮记忆——见下文路由）
+    'config.listDshModels': async () => {
+      const llm = ctx.get('llm')
+      const out = []
+      if (llm && llm.listProviders && llm.listModels) {
+        const provs = llm.listProviders() || []
+        for (const p of provs) {
+          const pid = (p && p.id) || p
+          try {
+            const ms = await llm.listModels(pid)
+            ;(ms || []).forEach((m) => {
+              const id = (m && m.id) || m
+              out.push({ value: 'dsh:' + pid + '/' + id, label: 'DSH · ' + ((m && m.name) || id) + (pid === (config.judge.provider || '') ? '' : ' (' + pid + ')') })
+            })
+          } catch (e) { /* 单个 provider 失败跳过 */ }
+        }
+      }
+      return { ok: true, models: out }
+    },
   }
 
   function handle(req, res) {

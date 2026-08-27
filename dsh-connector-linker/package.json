@@ -1,0 +1,12 @@
+{
+  "name": "dsh-connector-linker",
+  "version": "0.1.0",
+  "description": "MCP 连接器 — 参考图2 知识库卡片，通过聚合 MCP 代理接入外部知识库（通达信/腾讯文档/QQ 邮箱等）",
+  "type": "module",
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "slot": "conversation.view", "entry": "./lib/client.js" }
+  },
+  "main": "lib/index.js",
+  "scripts": { "check": "node --check lib/index.js && node --check lib/client.js" }
+}
