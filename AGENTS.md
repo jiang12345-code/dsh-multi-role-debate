@@ -20,6 +20,7 @@
 - 仓库：**https://github.com/jiang12345-code/dsh-multi-role-debate**（PUBLIC，topic `dsh-plugin` 等 8 个，tag `v1.0.0`，**11+ commits，CI 通过**）。
 - **npm 已发布 4 包**：`dsh-codex-agent@0.1.0` / `dsh-claude-agent@0.1.0` / `multi-role-debate@0.2.0` / `dsh-multi-role-debate@1.0.0`（`registry.npmjs.org`，均可安装；聚合包依赖版本化的组件包）。
 - ⏳ **awesome-dsh-plugin 市场收录 PR 待提**（仓库满 1 天后，即 2026-08-27 上午）：fork awesome-dsh-plugin → 加 `data/plugins/jiang12345-code__dsh-multi-role-debate.yml`（category=workflow，en+zh 描述）+ `data/screenshots.json`（docs/ 三图）→ 重生成 README → 提 PR。
+- **dsh-openrouter-free 已发布**（2026-08-27）：GitHub **https://github.com/jiang12345-code/dsh-openrouter-free**（PUBLIC，topics 含 dsh-plugin，tag v0.2.0，CI ✅）+ npm **dsh-openrouter-free@0.2.0**（维护者 jiangsan，与 multi-role 同一套身份组合，无需与 GitHub 同名）。源码以 `D:\dsh\技术问题解决\dsh-openrouter-free\` 为独立 git 仓（发布版 bundle manifest 齐）。⏳ 市场 PR 材料已备（`market-prep\jiang12345-code__dsh-openrouter-free.yml`），提交门槛=仓库≥1天 + ≥10 commits（当前 1 commit，需真实增量补足后提）。
 - 本工作区是 **Git monorepo**：3 组件包 + 聚合包 + 根 `README`/`package.json`/`LICENSE`/`AGENTS.md`/`CHANGELOG.md`/`CONTRIBUTING.md` + 一键安装 `install.ps1` + `docs/`（演示截图+示例配置+安装指南）+ `.github/workflows/ci.yml`。npm/market 预备用 `docs/market-*.prep.*` 已 gitignore。
 - **聚合包** `dsh-multi-role-debate`：`cordis.patch.yml` 插入 3 组件行（实体在前）。依赖已从 `file:` 改为**版本化** `^0.1.0`/`^0.2.0`（npm 发布需要；workspaces 亦按名解析本地）。
 - 安装（用户侧）：clone → `pwsh install.ps1 -Profile web` → 重启 DSH。**前置依赖**：本机需已装 Codex CLI + Claude Agent SDK。

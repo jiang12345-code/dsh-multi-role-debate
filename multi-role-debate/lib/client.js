@@ -113,6 +113,7 @@ window.__ModuleLoader__.load({
 .mrd-gear { display:flex; align-items:center; gap:5px; height:32px; padding:0 12px; border-radius:8px; background:var(--mrd-surface); border:1px solid var(--mrd-border); color:var(--mrd-txt2); cursor:pointer; transition:all .15s; font-size:12px; font-weight:500; }
 .mrd-gear:hover { color:var(--mrd-txt); border-color:var(--mrd-border); }
 .mrd-gear.active { color:var(--mrd-accent); border-color:rgba(88,166,255,.4); background:var(--mrd-accent-subtle); }
+.mrd-sys-line { text-align:center; font-size:11px; color:var(--mrd-txt2); opacity:.85; margin:2px 0; }
 .mrd-config-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding:8vh 20px 20px; }
 .mrd-config-panel { width:520px; max-width:100%; background:var(--mrd-elevated); border:1px solid var(--mrd-border); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.5); overflow:hidden; }
 .mrd-config-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--mrd-border-light); }
@@ -254,15 +255,22 @@ window.__ModuleLoader__.load({
       const [showPermMenu, setShowPermMenu] = React.useState(false)
       const [msgTime, setMsgTime] = React.useState('')
       const synthRef = React.useRef(false)
+      const lastModelRef = React.useRef({})   // chatAgent -> 上次成功会话时的生效模型（用于切换检测）
       // 模型配置
       const [configOpen, setConfigOpen] = React.useState(false)
       const [cfg, setCfg] = React.useState({ judge: { model: '', reasoningEffort: 'high', maxTokens: 4096 }, codexModel: '', claudeModel: '' })
       const [judgeModels, setJudgeModels] = React.useState([])
+      const [dshModels, setDshModels] = React.useState([])
+      const [codexDefault, setCodexDefault] = React.useState('')
       const [cfgSaved, setCfgSaved] = React.useState(false)
 
-      const refreshConfig = () => callApi("config.get", {}).then(r => { if (r && r.config) setCfg({ judge: { ...(r.config.judge || {}) }, codexModel: r.config.codexModel || '', claudeModel: r.config.claudeModel || '' }) }).catch(()=>{})
+      const refreshConfig = () => callApi("config.get", {}).then(r => {
+        if (r && r.config) setCfg({ judge: { ...(r.config.judge || {}) }, codexModel: r.config.codexModel || '', claudeModel: r.config.claudeModel || '' })
+        if (r && r.codexDefaultModel) setCodexDefault(r.codexDefaultModel)
+      }).catch(()=>{})
       const refreshJudgeModels = () => callApi("config.listJudgeModels", {}).then(r => { if (r && r.models) setJudgeModels(r.models) }).catch(()=>{})
-      React.useEffect(() => { refreshConfig(); refreshJudgeModels() }, [])
+      const refreshDshModels = () => callApi("config.listDshModels", {}).then(r => { if (r && r.models) setDshModels(r.models) }).catch(()=>{})
+      React.useEffect(() => { refreshConfig(); refreshJudgeModels(); refreshDshModels() }, [])
       const saveConfig = async () => { setCfgSaved(false); await callApi("config.set", { config: cfg }).catch(()=>{}); setCfgSaved(true); setTimeout(()=>setCfgSaved(false), 2000) }
       const cfgSet = (k, v) => setCfg(prev => ({ ...prev, judge: k === 'judgeModel' ? { ...prev.judge, model: v } : k === 'judgeEffort' ? { ...prev.judge, reasoningEffort: v } : k === 'judgeMax' ? { ...prev.judge, maxTokens: v } : prev.judge, codexModel: k === 'codexModel' ? v : prev.codexModel, claudeModel: k === 'claudeModel' ? v : prev.claudeModel }))
 
@@ -322,6 +330,13 @@ window.__ModuleLoader__.load({
         setChatLog(prev => [...prev, { role: 'user', text }])
         try {
           const opts = { agent: chatAgent, message: text, sessionId, cwd: sessionCwd, permissionMode }
+          // 模型切换检测：该 agent 的生效模型变了 → 丢弃旧会话钥匙，下一轮以新模型新会话开始（并在聊天流里提示）
+          var effM = (chatAgent === 'claude' ? cfg.claudeModel : cfg.codexModel) || ''
+          if (chatKeys[chatAgent] && lastModelRef.current[chatAgent] !== undefined && lastModelRef.current[chatAgent] !== effM) {
+            delete chatKeys[chatAgent]
+            setChatLog(prev => [...prev, { role: 'sys', text: 'ℹ️ 模型已切换为「' + (effM || (chatAgent + ' 默认')) + '」，已开启新会话。' }])
+          }
+          lastModelRef.current[chatAgent] = effM
           if (chatKeys[chatAgent]) opts.chatKey = chatKeys[chatAgent]
           const r = await callApi("role.chat", opts)
           if (r.chatKey) {
@@ -393,7 +408,10 @@ window.__ModuleLoader__.load({
       const renderChatLog = () => {
         const items = chatLog.length === 0
           ? React.createElement('div', { className: 'mrd-empty', style: { fontStyle: 'italic', fontSize: 12 } }, '开始与 ' + (chatAgent === 'codex' ? 'Codex' : 'Claude') + ' 对话...')
-          : chatLog.map(renderMsg)
+          : chatLog.map(function (m, i) {
+              if (m.role === 'sys') return React.createElement('div', { key: i, className: 'mrd-sys-line' }, m.text)
+              return renderMsg(m, i)
+            })
         return React.createElement('div', { className: 'mrd-chat-area' }, items)
       }
 
@@ -480,8 +498,19 @@ window.__ModuleLoader__.load({
               React.createElement('div', { className: 'mrd-config-hint' }, 'Judge 是第三方汇总的"最强大脑"。')),
             React.createElement('div', { className: 'mrd-config-group' },
               React.createElement('div', { className: 'mrd-config-group-title' }, 'Codex 模型'),
-              cfgField('模型', React.createElement('input', { placeholder: '留空 = Codex 默认', value: cfg.codexModel, onChange: function (e) { cfgSet('codexModel', e.target.value) } })),
-              React.createElement('div', { className: 'mrd-config-hint' }, 'Codex 模型由 Codex 自身配置决定；若 CLI 不支持会回退默认。')),
+              cfgField('模型', React.createElement('input', {
+                list: 'mrd-codex-models',
+                placeholder: '留空 = Codex 默认；可选 DSH 引擎模型',
+                value: cfg.codexModel,
+                onChange: function (e) { cfgSet('codexModel', e.target.value) },
+              })),
+              React.createElement('datalist', { id: 'mrd-codex-models' },
+                dshModels.map(function (m) { return React.createElement('option', { key: m.value, value: m.value }, m.label) }),
+                dshModels.map(function (m) { return React.createElement('option', { key: m.value + '-bare', value: (m.value.split('/')[1] || m.value) }, (m.value.split('/')[1] || m.value) + '（Codex 原生尝试）') }),
+              ),
+              React.createElement('div', { className: 'mrd-config-hint' },
+                '下拉选「dsh:」开头 → DSH 引擎直驱（带持久记忆）；手填 → Codex CLI 尝试使用，不支持会回退默认。',
+                codexDefault ? h('span', null, ' Codex 当前默认：' + codexDefault + '。') : null)),
             React.createElement('div', { className: 'mrd-config-group' },
               React.createElement('div', { className: 'mrd-config-group-title' }, 'Claude 模型'),
               cfgField('模型', React.createElement('input', {
@@ -491,10 +520,11 @@ window.__ModuleLoader__.load({
                 onChange: function (e) { cfgSet('claudeModel', e.target.value) },
               })),
               React.createElement('datalist', { id: 'mrd-claude-models' },
+                dshModels.map(function (m) { return React.createElement('option', { key: m.value, value: m.value }, m.label) }),
                 judgeModels.map(function (m) { return React.createElement('option', { key: m.id, value: m.id }, m.name || m.id) }),
-                React.createElement('option', { value: 'claude-sonnet-4-5' }, 'claude-sonnet-4-5（Claude 原生）'),
+                ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5'].map(function (x) { return React.createElement('option', { key: x, value: x }, x + '（Claude 原生）') }),
               ),
-              React.createElement('div', { className: 'mrd-config-hint' }, '填 DSH 模型名（如 deepseek-v4-pro）→ 走 Claude CLI 但模型换成它（工具能力全保留）；填 claude-xxx → Claude 原生；留空 = 全局 settings.json 的默认。')),
+              React.createElement('div', { className: 'mrd-config-hint' }, '选「dsh:」开头 → DSH 引擎直驱（保留 CLI 工具能力需走 env 覆盖路线：手填同款裸名）；手填 claude-xxx → 原生；留空 = 全局 settings.json 默认（当前即 deepseek-v4-pro）。')),
             React.createElement('div', { className: 'mrd-config-hint' }, '当前：' + cfgTotal)),
           React.createElement('div', { className: 'mrd-config-actions' },
             cfgSaved ? React.createElement('span', { className: 'mrd-config-saved' }, '已保存 ✓') : null,

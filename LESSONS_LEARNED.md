@@ -31,6 +31,9 @@
 3. **mock 加载 host 文件验证 apply()**：`await import(fileUrl)` + 假 ctx（get/effect/logger）跑一遍，立刻知道路由能否注册、有无运行时抛错（本会话建了 `test-orfree-load.mjs` 可复用改路径）。
 4. **host 正常 + 面板空白 → 100% 是 client 渲染问题**：直接读部署的 client.js **文件尾部**，检查渲染回调是否 return 了组件。
 5. **起第二个 DSH 实例抓启动日志**：`pnpm dsh web --no-open --port 3081`（注意 dsh-pocket 端口被占会自动代理到 3082），日志落 `$env:TEMP`，看 Cordis 报错。
+6. **一键技能（首选）**：以上 1-5 已封装为 `trajectory-search` 技能——
+   `node "C:\Users\73618\.dsh\skills\trajectory-search\scripts\traj-search.mjs" <关键词...> [--project 技术] [--since 7d]`
+   自动多帧 zstd 解压（扫描算法照抄 session-persistence-jsonl 官方实现）+ 多关键词 grep + 项目名中文还原。实战验收：本次马拉松复盘一发命中 18 会话 253 行。
 
 ---
 
@@ -52,3 +55,26 @@ DSH client slot 模式：`slots.register({...}, (props) => React.createElement(C
 
 ### 5. 权限与重启（已在 AGENTS.md，此处留索引）
 杀提权 DSH 进程 → `schtasks /rl HIGHEST` 一次性任务或 WMI 分离 spawn；宿主非提权时普通权限可直接 taskkill；restart-dsh.ps1 已固化于 `~/.dsh/`。
+
+---
+
+## 2026-08-27 · 多角色论证「直接对话」无持久记忆（Claude/Codex 双实体）
+
+### 问题现象
+多角色论证面板与 Claude 直接对话时没有持久对话记忆——刷新页面或重启 DSH 后，每条消息都像第一次见面；codex 同理。
+
+### 根因（双层叠加）
+1. **宿主实体层**：claude 的 `chatSessions` / codex 的 `_threads` 会话映射是**进程内 Map**——DSH 重启即清零；key 失效后每条消息都新开会话 = 全面失忆。
+2. **前端层**：chatKey 存在 React state 里，页面刷新/切 tab 即丢；配合上游 key 失效加剧。
+
+### 修复
+1. `dsh-claude-agent`：会话映射落盘 `~/.dsh/claude-agent/chat-sessions.json`（启动 hydrate + 每次变更写盘）。
+2. `dsh-codex-agent`：线程映射落盘 `~/.dsh/codex-agent/threads.json`（启动 hydrate；resume 失败自动回退新 thread，绝不硬断）。
+3. 前端 chatKey 存 localStorage（按 sessionId 分桶：`mrd-chatkeys:<sessionId>`），刷新/切 tab 都能续接。
+4. 面板加「模型切换检测」：检测到该 agent 生效模型变化时清掉旧 key、插一条系统提示行（`.mrd-sys-line`）。
+
+### 实测证据
+同一 chatKey 连发两条 role.chat：第一条种暗号 MAGPIE-42 → 答"已记住"；第二条索回 → 精确答出 MAGPIE-42。`check_health` 全程 FAIL=0。
+
+### 最快诊断法
+直接对 `/__dsh-mrd/api` 同一 chatKey 连发两条 role.chat（首条种暗号、次条索暗号），一轮就能区分是「实体层断」「前端 key 断」还是「一切正常只是没等渲染」。看落盘文件是否生成：`~/.dsh/claude-agent/chat-sessions.json`。
