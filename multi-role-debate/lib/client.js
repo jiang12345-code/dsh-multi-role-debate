@@ -110,7 +110,7 @@ window.__ModuleLoader__.load({
 .mrd-chat-status { display:flex; align-items:center; gap:6px; margin-top:6px; padding-left:4px; font-size:10px; color:var(--mrd-txt3); }
 .mrd-chat-status svg { width:11px; height:11px; }
 /* 模型配置面板 */
-.mrd-gear { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; background:var(--mrd-surface); border:1px solid var(--mrd-border); color:var(--mrd-txt2); cursor:pointer; transition:all .15s; }
+.mrd-gear { display:flex; align-items:center; gap:5px; height:32px; padding:0 12px; border-radius:8px; background:var(--mrd-surface); border:1px solid var(--mrd-border); color:var(--mrd-txt2); cursor:pointer; transition:all .15s; font-size:12px; font-weight:500; }
 .mrd-gear:hover { color:var(--mrd-txt); border-color:var(--mrd-border); }
 .mrd-gear.active { color:var(--mrd-accent); border-color:rgba(88,166,255,.4); background:var(--mrd-accent-subtle); }
 .mrd-config-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding:8vh 20px 20px; }
@@ -245,7 +245,11 @@ window.__ModuleLoader__.load({
       const [chatInput, setChatInput] = React.useState('')
       const [chatBusy, setChatBusy] = React.useState(false)
       const [chatLog, setChatLog] = React.useState([])
-      const [chatKeys, setChatKeys] = React.useState({})
+      // chatKey 持久化（localStorage，按 sessionId 分桶）：刷新/切 tab 不丢，直接对话可续接记忆
+      var ckKey = 'mrd-chatkeys:' + (sessionId || 'default')
+      var [chatKeys, setChatKeys] = React.useState(function () {
+        try { return JSON.parse(localStorage.getItem(ckKey) || '{}') } catch (e) { return {} }
+      })
       const [permissionMode, setPermissionMode] = React.useState('restricted')
       const [showPermMenu, setShowPermMenu] = React.useState(false)
       const [msgTime, setMsgTime] = React.useState('')
@@ -320,7 +324,9 @@ window.__ModuleLoader__.load({
           const opts = { agent: chatAgent, message: text, sessionId, cwd: sessionCwd, permissionMode }
           if (chatKeys[chatAgent]) opts.chatKey = chatKeys[chatAgent]
           const r = await callApi("role.chat", opts)
-          if (r.chatKey) setChatKeys(prev => ({ ...prev, [chatAgent]: r.chatKey }))
+          if (r.chatKey) {
+            setChatKeys(prev => { var n = { ...prev, [chatAgent]: r.chatKey }; try { localStorage.setItem(ckKey, JSON.stringify(n)) } catch (e) {} return n })
+          }
           setChatLog(prev => [...prev, { role: chatAgent, text: r.text || '(no response)' }])
         } catch (e) {
           setChatLog(prev => [...prev, { role: chatAgent, text: '[错误] ' + String(e && e.message || e) }])
@@ -402,9 +408,10 @@ window.__ModuleLoader__.load({
           React.createElement('button', { className: 'mrd-tab' + (mode === 'chat' ? ' active' : ''), onClick: () => setMode('chat') }, '直接对话'),
           React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 } },
             React.createElement('button', { className: 'mrd-gear' + (configOpen ? ' active' : ''), onClick: () => setConfigOpen(!configOpen), title: '模型配置' },
-              React.createElement('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+              React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
                 React.createElement('circle', { cx: 12, cy: 12, r: 3 }),
-                React.createElement('path', { d: 'M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12' }))))))
+                React.createElement('path', { d: 'M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12' })),
+              React.createElement('span', { style: { marginLeft: 2 } }, '模型配置')))))
       // ---- Mode A ----
       const debateView = mode === 'debate'
         ? React.createElement(React.Fragment, null,
@@ -477,8 +484,17 @@ window.__ModuleLoader__.load({
               React.createElement('div', { className: 'mrd-config-hint' }, 'Codex 模型由 Codex 自身配置决定；若 CLI 不支持会回退默认。')),
             React.createElement('div', { className: 'mrd-config-group' },
               React.createElement('div', { className: 'mrd-config-group-title' }, 'Claude 模型'),
-              cfgField('模型', React.createElement('input', { placeholder: '留空 = Claude 默认', value: cfg.claudeModel, onChange: function (e) { cfgSet('claudeModel', e.target.value) } })),
-              React.createElement('div', { className: 'mrd-config-hint' }, '如 claude-sonnet-4-5 / claude-opus-4-1。')),
+              cfgField('模型', React.createElement('input', {
+                list: 'mrd-claude-models',
+                placeholder: '留空 = Claude 默认；可选 DSH 选择器同款模型',
+                value: cfg.claudeModel,
+                onChange: function (e) { cfgSet('claudeModel', e.target.value) },
+              })),
+              React.createElement('datalist', { id: 'mrd-claude-models' },
+                judgeModels.map(function (m) { return React.createElement('option', { key: m.id, value: m.id }, m.name || m.id) }),
+                React.createElement('option', { value: 'claude-sonnet-4-5' }, 'claude-sonnet-4-5（Claude 原生）'),
+              ),
+              React.createElement('div', { className: 'mrd-config-hint' }, '填 DSH 模型名（如 deepseek-v4-pro）→ 走 Claude CLI 但模型换成它（工具能力全保留）；填 claude-xxx → Claude 原生；留空 = 全局 settings.json 的默认。')),
             React.createElement('div', { className: 'mrd-config-hint' }, '当前：' + cfgTotal)),
           React.createElement('div', { className: 'mrd-config-actions' },
             cfgSaved ? React.createElement('span', { className: 'mrd-config-saved' }, '已保存 ✓') : null,

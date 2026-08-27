@@ -17,12 +17,33 @@
 export const name = 'dsh-claude-agent'
 
 import { randomUUID } from 'node:crypto'
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import path from 'node:path'
+import os from 'node:os'
+
+// 会话映射持久化（DSH 重启后仍可 resume，保住持久对话与记忆）
+const SESSIONS_PATH = path.join(os.homedir(), '.dsh', 'claude-agent', 'chat-sessions.json')
+function loadSessions() {
+  try { return JSON.parse(readFileSync(SESSIONS_PATH, 'utf8')) } catch { return {} }
+}
+function saveSessions(obj) {
+  try { mkdirSync(path.dirname(SESSIONS_PATH), { recursive: true }); writeFileSync(SESSIONS_PATH, JSON.stringify(obj, null, 2)) } catch { /* ignore */ }
+}
 
 export const inject = ['subprocess']
 
 export function apply(ctx) {
   const conversations = new Map()   // convId -> { text, cursor, status, sessionId }
   const chatSessions = new Map()    // chatSessionId -> { sessionId, cwd }  （能力 2 多轮用）
+  // 开机 hydrate：恢复上次运行留下的会话映射（resume 后 Claude 仍有记忆）
+  for (const [key, rec] of Object.entries(loadSessions())) {
+    if (rec && rec.sessionId) chatSessions.set(key, rec)
+  }
+  function persistChatSessions() {
+    var obj = {}
+    chatSessions.forEach(function (v, k) { obj[k] = v })
+    saveSessions(obj)
+  }
 
   let sdkPromise = null
   function sdk() {
@@ -42,14 +63,26 @@ export function apply(ctx) {
   /**
    * 跑一次 query，收集最终文本。
    * @param {string} prompt
-   * @param {{sessionId?: string, resume?: string, cwd?: string, permissionMode?: string}} opts
+   * @param {{sessionId?: string, resume?: string, cwd?: string, permissionMode?: string, model?: string}} opts
+   *   model 支持两种：claude-xxx = SDK 原生模型（options.model）；
+   *                  其他（如 deepseek-v4-pro / glm-5.3）= 视为 ANTHROPIC_BASE_URL 端点上的模型，
+   *                  per-call 覆盖 ANTHROPIC_MODEL + 三个 DEFAULT_*（不动全局 settings.json）。
    */
   async function runQuery(prompt, opts = {}) {
     const mod = await sdk()
     const options = { persistSession: true }
     if (opts.cwd) options.cwd = opts.cwd
-    // 模型：允许调用方指定（UI 自由配置），留空用 SDK 默认
-    if (opts.model) options.model = opts.model
+    // 模型：claude-xxx 走 SDK 原生 options.model；DSH 系模型走 env 覆盖（保留 CLI 全部工具能力）
+    if (opts.model && /^claude/i.test(opts.model)) {
+      options.model = opts.model
+    } else if (opts.model) {
+      options.env = Object.assign({}, process.env, {
+        ANTHROPIC_MODEL: opts.model,
+        ANTHROPIC_DEFAULT_SONNET_MODEL: opts.model,
+        ANTHROPIC_DEFAULT_OPUS_MODEL: opts.model,
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: opts.model,
+      })
+    }
     // 权限模式：full=完全（bypassPermissions，像 DSH Full access）；默认受限
     if (opts.permissionMode === 'full') {
       options.permissionMode = 'bypassPermissions'
@@ -103,6 +136,7 @@ export function apply(ctx) {
       // 记录会话（用于下次续接）
       const effectiveKey = chatKey || ('chat-' + sdkSessionId)
       chatSessions.set(effectiveKey, { sessionId: sdkSessionId, cwd, permissionMode: opts.permissionMode === 'full' ? 'full' : 'restricted' })
+      persistChatSessions()
       return { convId: null, chatKey: effectiveKey, text }
     },
     async startConversation(prompt, opts = {}) {
