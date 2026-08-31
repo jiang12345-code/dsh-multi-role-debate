@@ -73,6 +73,7 @@
 - 幸存会话 42 个日志全部健康（check_health ok=42 FAIL=0）；**最近数日被删的会话确认不可恢复**（TRIM/无卷影/不入回收站）。
 - MCP：元典×3＋北大法宝已经 agent-sync 写进 web profile `cordis.patch.yml`，**下次重启 DSH 生效**（User 级环境变量 `YUANDIAN_API_KEY`/`PKULAW_MCP_TOKEN` 幸存）；82 个市场连接器仍需在 设置→🧩连接器 逐个重新 OAuth（用户本人）。
 - multi-role-debate.config.json 已按默认重建；sentinel 规则当日已重建；**法律世界 Mnemon 账本(15条)+双文档投影+derive.mjs 丢失待恢复——在「个人网站」工作区会话做**（那边 AGENTS 自注入；`D:\dsh\个人网站\data\legal-world.json` 与 schema 在 git 幸存，GitHub 宇宙仓 5680b81 可对照）。
+- **第二波修复（8/31 深夜）**：14 个"文件在盘但注册表掉关联"的会话（含 构建DSH远程访问权限控制方案×9 fork、配置千问套餐模型、模型配置技能询问 等重命名会话）已用 `incident-recovery\reregister_sessions.mjs` 重注册回各工作区（写回前自动备份 `workspace.json.bak-reregain-*`）。**丢失清单无法枚举**：`session_projcache` 在重启时被剪枝只剩幸存 22 条；用户点名的「AI进行时」对话文件已确认被删不可恢复，但其产物在个人网站 git（data/ai-now.json）与 WorkBuddy 日志幸存。若刷新侧栏未见恢复＝宿主内存缓存，择机 dsh-self-restart 重启即生效（本会话会自动续跑）。
 - `dsh-tenant-gateway\`＝多租户托管项目（dsh-server-login MIT fork 基座），**M0 验证被事故打断、已暂停**；恢复该工作前重读 `incident-recovery\POSTMORTEM.md` §5（删除类脚本先干跑、白名单守卫、勿碰家目录）。
 
 ## 维护约定
