@@ -1,0 +1,9 @@
+# incident-recovery 工作目录：以下不进仓库（克隆的公共仓/日志挖出的原文产物/临时探针）
+skills-src/
+writes/
+loads/
+rebuilt/
+store_*.zip
+npm-install.log
+.probe-dl.txt
+_inspect_*.mjs
