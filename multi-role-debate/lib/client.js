@@ -255,7 +255,8 @@ window.__ModuleLoader__.load({
       const [showPermMenu, setShowPermMenu] = React.useState(false)
       const [msgTime, setMsgTime] = React.useState('')
       const synthRef = React.useRef(false)
-      const lastModelRef = React.useRef({})   // chatAgent -> 上次成功会话时的生效模型（用于切换检测）
+      const lastModelRef = React.useRef({})
+      const lastCwdRef = React.useRef({})
       // 模型配置
       const [configOpen, setConfigOpen] = React.useState(false)
       const [cfg, setCfg] = React.useState({ judge: { model: '', reasoningEffort: 'high', maxTokens: 4096 }, codexModel: '', claudeModel: '' })
@@ -339,6 +340,11 @@ window.__ModuleLoader__.load({
           lastModelRef.current[chatAgent] = effM
           if (chatKeys[chatAgent]) opts.chatKey = chatKeys[chatAgent]
           const r = await callApi("role.chat", opts)
+          if (r && r.cwd) {
+            if (lastCwdRef.current[chatAgent] !== r.cwd) { lastCwdRef.current[chatAgent] = r.cwd; setChatLog(function (prev) { return prev.concat([{ role: "sys", text: "📁 工作区: " + r.cwd }]) }) }
+          } else {
+            setChatLog(function (prev) { return prev.concat([{ role: "sys", text: "⚠️ 未能解析当前会话工作区，本次对话在 DSH 启动目录运行" }]) })
+          }
           if (r.chatKey) {
             setChatKeys(prev => { var n = { ...prev, [chatAgent]: r.chatKey }; try { localStorage.setItem(ckKey, JSON.stringify(n)) } catch (e) {} return n })
           }

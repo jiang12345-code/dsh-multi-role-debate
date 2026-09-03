@@ -95,17 +95,30 @@ export function apply(ctx) {
   // 从 sessionId 解析当前工作区 cwd（跟随用户在哪个工作区）
   async function resolveCwd(sessionId) {
     if (!sessionId) return undefined
-    try {
-      const sq = ctx.get('sessionQuery')
-      if (!sq) return undefined
-      const surface = await sq.readSurface(sessionId)
-      const header = surface && surface.header
-      const cwd = header && header.cwd
-      return typeof cwd === 'string' && cwd ? cwd : undefined
-    } catch (error) {
-      ctx.logger?.warn?.('multi-role-debate: resolveCwd failed: ' + String(error && error.message || error))
+    const raw = String(sessionId)
+    const bare = raw.replace(/^session-/, "")
+    const ids = Array.from(new Set([raw, bare, "session-" + bare]))
+    const sq = ctx.get("sessionQuery")
+    if (!sq) {
+      ctx.logger?.warn?.("[mrd] resolveCwd: sessionQuery service unavailable")
       return undefined
     }
+    const readers = []
+    if (typeof sq.readSurface === "function") readers.push((id) => sq.readSurface(id))
+    if (typeof sq.observeSession === "function") readers.push((id) => sq.observeSession(id))
+    for (const read of readers) {
+      for (const id of ids) {
+        try {
+          const snap = await read(id)
+          const cwd = snap && ((snap.header && snap.header.cwd) || (snap.session && snap.session.header && snap.session.header.cwd))
+          if (typeof cwd === "string" && cwd) return cwd
+        } catch (error) {
+          ctx.logger?.warn?.("[mrd] resolveCwd(" + id + ") failed: " + String(error && error.message || error))
+        }
+      }
+    }
+    ctx.logger?.warn?.("[mrd] resolveCwd: no cwd resolved for " + raw)
+    return undefined
   }
 
   // ---------- 状态 ----------
@@ -338,7 +351,7 @@ export function apply(ctx) {
         if (cwd) opts.cwd = cwd
       }
       const r = await agent.chat(message, opts)
-      return { ok: true, agent: (args && args.agent) || 'codex', chatKey: r.chatKey || null, text: r.text }
+      return { ok: true, agent: (args && args.agent) || "codex", chatKey: r.chatKey || null, text: r.text, cwd: opts.cwd || null }
     },
     // 能力 1 完成时，由 DSH 主会话模型汇总两路论证 → 写入 state.dshText（第三列）
     'role.synthesize': async (args) => {

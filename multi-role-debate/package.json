@@ -1,6 +1,6 @@
 {
   "name": "multi-role-debate",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "多角色并行论证 + 单 agent 直接对话：基于真实 Codex/Claude CLI 流（stream-json）并行跑多角色论证，DSH 主会话作为第三家独立厂商做 Judge/Aggregator；并提供 Obsidian 式的直接对话入口。",
   "keywords": [
     "deepseek-harness",

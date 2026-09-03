@@ -318,3 +318,13 @@ settings.yaml 该模型加 `reasoningEfforts: {low: low, medium: medium, high: h
 
 ### 铁律
 ① `catch { /* ignore */ }` 必须附带最小证据输出（console.error 一行），纯静默吞会把"从未生效"伪装成"一直在工作"；② 用了 `path.xxx` 就必须 `import path from 'node:path'`，解构导入（`{dirname, join}`）时严禁混用；③ 每次动 profile（升级/重装/装插件）后，把 bundles 清单与 node_modules 对照 AGENTS 的"部署形态"节核一遍——实体在编排前。
+
+### 第四层（同日追加 · cwd 不跟随工作区 · 无 shell 会话的外包双手法）
+
+**现象**：直接对话能聊了，但 Codex/Claude 报自己的工作区是 `D:\dsh\dsh-alpha2-home`（DSH 启动目录），不是当前会话工作区。
+
+**根因**：`multi-role-debate` host 的 `resolveCwd(sessionId)` 把 **wire 形态的 `session-<uuid>`** 直接喂给 `sessionQuery.readSurface()`——alpha.3 该 API 认**裸 uuid**；取不到 `header.cwd` 时**静默返回 undefined**（不抛错、宿主日志零 warn），实体于是回退 `process.cwd()`。"静默回退到错误默认值"比抛错更难查——用户只看到"AI 不知道自己在哪"。
+
+**修复（mrd v0.3.1）**：resolveCwd 多重回退（readSurface/observeSession × 完整id/裸uuid/重建id 六种组合）+ 每分支 warn + `role.chat` 响应带 `cwd` 字段 + client 在聊天流插 `📁 工作区: <path>` sys 行（解析失败插 ⚠️ 警示）——**让环境事实对用户可见，不再静默**。实测 `cwd:"D:\dsh\技术问题解决"` 正确、宿主日志零 warn（一次命中）。
+
+**新方法 · 无 shell 会话把 CLI 当远程双手**：本会话被 materialize 冷唤醒（terminal/fs 全无）时，用**已修好的 mrd role.chat（permissionMode:'full'）**把 Claude CLI 当远程双手：grep 宿主源码/日志 → 下精确 Edit 指令（先备份 .bak-xxx、给旧串新串、node --check 失败即回滚、复制部署、curl 调 self-restart）→ 全程无需用户点侧栏。三个坑：① 任务超 30s 会被 execute 掐断——用 `setTimeout(fetch)` fire-and-forget + 新 chatKey 轮询取结果文件；② **首条消息就带 permissionMode:'full'**（restricted 下读工作区外文件全被拦，且 cwd 错时"工作区外"是整个 D 盘）；③ Git Bash 会改写 `D:/path` 参数，findstr 等原生命令要 `MSYS_NO_PATHCONV=1` 或反斜杠路径。
