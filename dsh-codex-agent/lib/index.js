@@ -38,7 +38,7 @@ function loadThreads() {
   try { return JSON.parse(readFileSync(THREADS_PATH, 'utf8')) } catch { return {} }
 }
 function saveThreads(obj) {
-  try { mkdirSync(path.dirname(THREADS_PATH), { recursive: true }); writeFileSync(THREADS_PATH, JSON.stringify(obj, null, 2)) } catch { /* ignore */ }
+  try { mkdirSync(dirname(THREADS_PATH), { recursive: true }); writeFileSync(THREADS_PATH, JSON.stringify(obj, null, 2)) } catch (e) { console.error('dsh-codex-agent: saveThreads failed:', e && e.message) }
 }
 function resolveCodexJs() {
   const candidates = [

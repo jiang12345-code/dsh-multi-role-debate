@@ -217,3 +217,104 @@ dsh-site-connector 部署后 DSH 前端无法访问（3080 起来但页面挂）
 
 ### 铁律（已同步进全局 AGENTS.md 第 10 节）
 pwsh 临时变量禁用 `$home`/`$pid`/`$host`/`$args`/`$input` 等自动/只读名；任何 `Remove-Item -Recurse -Force` 前必须打印目标路径并肉眼确认非系统/家目录，加白名单守卫。
+
+---
+
+## 2026-09-02 · 手写 models 条目漏 reasoningEfforts → UI 智能挡位静默消失（glm-5.3-flash）
+
+### 问题现象
+zai-coding-cn/glm-5.3-flash 配通（chat 200、UI 下拉可见），但模型设置里**没有智能挡位选择**，且全程无任何报错。
+
+### 根因
+pi-ai `catalog.ts` 的 `resolveModelReasoning`：手声明模型条目 `reasoningEfforts` 缺省 = `reasoning: false` = UI 不显示挡位选择器。**静默失败**——且不继承内置 catalog 同名/同系模型的 reasoning 声明（glm-5.3-flash 不在内置 catalog，base=undefined）。配置时看到了官方文档"推荐 reasoning_effort: max"却没转成配置项。
+
+### 修复
+settings.yaml 该模型加 `reasoningEfforts: {low: low, medium: medium, high: high, max: max}`（映射经真实探针校准：实测 low→reasoning_tokens=0、max→962+，与官方"思考强制开启"描述不符，以探针为准）+ 重启 DSH。
+
+### 最快诊断法
+推理模型配完看 UI 有没有挡位选择器；没有 = 漏了 `reasoningEfforts`。挡位映射对不对，用 `reasoning_effort` 逐档实测读 `usage.completion_tokens_details.reasoning_tokens`。
+
+### 防再发
+已固化进 `dsh-model-config` 技能（Step 1 铁律 + Step 2 挡位探针 + Step 3 目检挡位，2026-09-02）。
+
+---
+
+## 2026-09-03 · dsh-openrouter-free 两大坑：面板切换对老会话无效 + MISSING_CREDENTIAL
+
+### 问题现象
+① 面板点选免费模型后，主对话底部模型选择器不跟（要再手动重选一遍才显示新模型）；② 切换后发消息报 `llm-pi-ai: no credential for provider route "openrouter": its profile resolves OPENROUTER_API_KEY, which is not set`（MISSING_CREDENTIAL）。
+
+### 根因（两层，第二层藏在 alpha.2 引擎深处）
+1. **MISSING_CREDENTIAL**：免费模型也要 OpenRouter API Key（$0 费用 ≠ 免认证）。插件只写了 settings 路由（`apiKeyEnv: OPENROUTER_API_KEY`），凭据库里从来没有这个键（8/31 事故重置 credentials 后也没重建过它）。请求前 llm-pi-ai 逐操作 resolve 凭据 → 缺失即拒。
+2. **切换不跟**：插件 `model.use` 只写 `agent-default-model`（全局默认），但 alpha.2 会话模型选择是**三层优先级**（session-controller/agent.ts `selectionFor`）：会话 pending（`model/selection` 事件）→ **上次请求的 header**（有请求历史的会话锁死在 lastUsed）→ 全局默认。**只改默认对"有过请求历史的会话"完全无效**。原生选择器之所以一切就生效，是因为它走 `commands.selectModel` = `selectForNextRequest`（写会话级事件）+ `agentDefaultModel.saveSelection`（存默认）**双写**。
+
+### 修复（v0.2.1）
+- host `model.use({id, sessionId})`：① 先 `llm.resolveCallConfig` 预校验（坏模型在切换时报错而非发消息才炸）；② 带 sessionId 时 `agents.get(sessionId)` + `agents.selectForNextRequest(agent, selected)` 复刻原生双写；会话未加载降级仅改默认并在 note 里说明。**⚠️ ② 当日后续实测无效——`selectForNextRequest` 在公开 `agents` 服务上根本不存在（幻影 API），见下面"问题一收口"条目；真正修复 = 直调 `sessionController.selectModel`。**
+- host 新增 `key.status/key.set/key.unset`：走 `ctx.get('credentials')` 服务的 `describe/set/unset`，把 key 写进凭据库（免重启，写入即广播 `credentials/reference-updated`，前端选择器自动刷新）。`/__orfree` 补 loopback 围栏（host-auth 只包 /api，自定义前缀自建围栏——site-connector 同款教训）。
+- client：切换传 `props.sessionId`（session 级 slot 框架注入）；缺 key 时面板显示警示条 + password 输入框一键保存。
+
+### 最快诊断法
+1. 见到 `no credential for provider route "X"` → 直接查 `.credentials.yaml` refs 有没有对应键名（只列键不打印值）；有 `apiKeyEnv` 就必须配凭据，没有第三条路。
+2. "切了模型不生效" → 先看会话有没有请求历史（9 轮 10 步那种必有 lastUsed 锁定）；alpha.2 引擎里全局默认只是第三优先级，修法是会话级双写，不是重启。
+3. 会话模型选择三层优先级读 `packages/api/session-controller/src/agent.ts` 的 `selectionFor`（L271-298），`packages/api/session-controller/src/commands.ts` 的 `selectModel`（L118-154）是原生双写范本。
+
+### 问题一收口（同日晚）· 第三个坑：幻影 API —— `agents.selectForNextRequest` 不存在
+
+**现象**：v0.2.1 双写代码部署后行为不变：面板点模型只改全局默认，底部选择器对老会话不跟；curl 复现（`model.use` 带真实已加载 sessionId）返回 `sessionApplied:false, note:"agents 服务不可用，仅改全局默认"`——即 host 永远走不进会话分支。
+
+**根因（H2 实锤，H1 排除）**：公开的 `ctx.get('agents')` 是 core/agent 的 **AgentRegistry**，方法只有 `get/list/roots/create/resume/register/enter/announce/isOwnedBy/withInitiator…`——**没有 `selectForNextRequest`**。它长在 session-controller 的**内部类** `ApiSessionAgentController`（`packages/api/session-controller/src/agent.ts` L321，SessionController 构造时 `new` 出来，不注册为任何服务）。所以 `typeof agents.selectForNextRequest === 'function'` 恒为假，会话级那一笔**从 v0.2.1 起就从未落地过**。H1（props.sessionId 为空）同时排除：ui-session 的 `BUILTIN_SOURCE` 把 `sessionId` 作为标准 kit prop 注入**所有 session 作用域 slot 组件**（`packages/client/ui-session/src/client/index.ts` L197-210），multi-role-debate 同款 `props.sessionId` 取法且生产验证可用。
+
+**修复（v0.2.2）**：host `model.use` 会话级直调 **`ctx.get('sessionController').selectModel(Object.assign({sessionId}, selected))`** —— 这是底部原生选择器同一个公开方法（@Remote('selectModel')，host 侧就是普通类方法，动态插件 Inspect 目录可见），内部自动做：resolveAgent（**冷会话也 resume**，比旧代码只认活会话更强）→ `llm.resolveCallConfig` 校验 → `selectForNextRequest`（写 `model/selection` 会话事件 → 投影 pending → 底部选择器立即显示 + 内存 selection 供下次组装）→ `agentDefaultModel.saveSelection`（全局默认）。响应加 `sessionIdSeen` 自报字段，三种 note 分支各自定位（未收到 id / 服务不可用 / 写入失败），下次诊断零猜测。离线集成测试 `test-orfree-model-use.mjs` 五路径全过（A 应用成功 / B、C 服务缺席 / D selectModel 抛错 / E 无 sessionId）。
+
+**max 推理档第三坑（同轮已修，一并记录）**：旧 `model.use` 给推理模型写 `reasoningEffort:'max'`，但 `mapModel` 生成的 llm-pi-ai 条目只声明 `reasoningEfforts:{low,medium,high}` → `resolveCallConfig` 拒 → 一路到发消息才炸 `UNSUPPORTED_REASONING_EFFORT`（项目 AGENTS 老坑的**真正根源**）。修法：**从高到低试 resolveCallConfig 自动挑该模型真正支持的一档；非推理模型整个省略 `reasoningEffort`**。与"手声明条目缺 `reasoningEfforts` = UI 挡位静默消失"互为镜像：**声明的档位集合与所选档必须两边一致**。
+
+**最快诊断法（通用）**：
+1. 插件报"服务不可用/方法不存在"降级时，**先列该服务的真实方法面**（动态插件 `cordis_inspect_query` Host `Service.listService` 不带参 = 全服务方法目录，或直接读类源码），别凭文档/印象调用——服务名对≠方法在。
+2. "面板切了不跟"用一条 curl 断层：`POST /__orfree/api {"method":"model.use","args":{"id":"<免费模型>","sessionId":"<真实会话id>"}}` → `sessionApplied + note + sessionIdSeen` 三字段直接区分 前端没传 id / host 服务不可用 / 引擎写入失败 / 成功但 UI 未刷（真出现再查前端投影流）。会话 id 取自 `DSH_SESSION_ID` 环境变量（pwsh 里 `Get-ChildItem env:DSH_*`），格式 `session-<uuid>` 就是 agents/selectModel 认的键。
+3. **验证"修复已生效"必须看响应/事件的实证**（`model/selection` 事件会追加进会话日志），代码"看着对"不等于接口存在——本次 v0.2.1 就是对着幻影 API 写了单测跑不通的"修复"。
+
+---
+
+## 2026-09-02 · CF Access API 建org无登录方式 + 强制层无 owner 应急通道 → 远程访问双锁死（dsh-workspace-share M0）
+
+### 问题现象
+为 harness.jiangsan.vip 用 CF API 建了 Zero Trust org + Access 应用 + allow-everyone 策略后，公网访问 302 到 CF 登录页，但页面上**没有任何登录方式**（"There are no login methods available for this account"）——本机（用域名访问）和手机全部进不去；随后部署的插件强制层又对无 CF JWT 的远程请求一律 401，删掉 CF 应用后**手机依然 401**（被自己的插件挡住）。
+
+### 根因（两层叠加）
+1. **API 创建的 Zero Trust org 不自带任何身份提供方**：策略里的 `auth_method:[{single_email_code:{}}]` 字段被接口静默忽略（响应不回显），OTP 登录方式从未生效 → CF 层死路。
+2. **强制层没有 owner 应急通道（break-glass）**：v0.2.0 对所有非 loopback 请求要求 CF JWT，CF 一坏/一删，owner 自己的远程访问也被锁——设计时只想着"防访客"，没想"CF 挂了我怎么进门"。
+
+### 修复（回滚）
+① DELETE `access/apps/{id}`（拆 CF 墙）；② 从 profile `package.json` 的 bundles 数组摘除 `dsh-workspace-share`；③ 经 dsh-self-restart 重启。验收指纹：公网 401 响应体从我的 `authentication required` 变回原生 `dsh web authentication required; reopen…` = 强制层卸载干净；手机凭 30 天原生 cookie 恢复访问。
+
+### 最快诊断法
+公网 GET / 看响应体指纹区分三层门：`302→cloudflareaccess.com`=CF 墙；`authentication required`=workspace-share 强制层；`dsh web authentication required; reopen…`=DSH 原生 token 门禁（正常，浏览器有 30 天 cookie）。逐层剥洋葱定位是谁在挡。
+
+### 铁律（已进计划文档"耐久性"节）
+① 任何鉴权/门禁层上线前，必须先验证"登录方式真的存在"（真实浏览器走一遍），API 返回 success ≠ 登录方式生效；② 强制层必须有 owner break-glass（loopback 之外的应急进门方式或一键物理下线开关），否则不许部署。
+
+---
+
+## 2026-09-03 · 多角色论证"实体未就绪"+"直接对话失忆"三层根因（实体包消失 / codex 配置断 / saveThreads 哑火）
+
+### 问题现象
+① 辩论 tab 报 `[错误] 实体未就绪（dsh-codex-agent / dsh-claude-agent 未加载）`；② 修复重启后直接对话"记忆能力都没有了"；③ codex 通道换报 `failed to load configuration: 系统找不到指定的文件 (os error 2)`。
+
+### 根因（三层独立，层层都真）
+1. **实体包从 profile 消失**：`profiles\web\node_modules\` 里只剩编排层 `multi-role-debate`，`dsh-codex-agent`/`dsh-claude-agent` 两个包没了、bundles 里也没了这两行（9/1 升级或某次 profile 重装冲掉）。编排层 `ctx.get` 可选获取设计使 tab 界面正常、调用才报错——"界面在但一用就报错"= 实体缺席的指纹。
+2. **codex CLI 自身配置断**：`~/.codex/config.toml` 第 5 行 `model_catalog_json = "cc-switch-model-catalog.json"` 指向的文件在 8/31 事故被删（cc-switch 只重建了 config.toml，catalog 文件没有）→ codex app-server 每次 load config 即抛 os error 2，JSON-RPC `-32600`。**这不是插件问题**。
+3. **`saveThreads` 真代码 bug（GitHub 发布版同样带着）**：`dsh-codex-agent/lib/index.js` 用了 `path.dirname(...)`，但文件只 `import { dirname, join } from 'node:path'`——`path` 未定义 → ReferenceError 被 `catch { /* ignore */ }` 静默吞掉 → **threads.json 从上线起一次都没写过**。进程内 Map 记忆正常（暗号探针能过），跨 DSH 重启记忆全是假的。同文件 grep `path\.` 全仓扫一遍：只有这一个包踩雷（claude-agent/mrd 都正确 `import path from 'node:path'`）。
+4. 附带哑雷：`multi-role-debate/lib/client.js` 513 行调用未定义的 `h(...)`（正确是 `React.createElement`）——因 host 尚未实现 `codexDefaultModel` 字段而暂不触发；一旦补上该字段，打开「模型配置」即崩整棵面板子树。已顺手修复。
+
+### 修复
+① 两实体包整目录复制回 profile node_modules + bundles 在编排层之前插入两行（改前备份 package.json）；② 删除 config.toml 失效的 `model_catalog_json` 行（备份 `.bak-mrd-fix`）；③ `path.dirname`→`dirname` + catch 改打错误日志，bump 0.2.1；④ `h(`→`React.createElement(`；⑤ 恢复验证：暗号两连发（BLUE-FALCON-77 种/取）codex、claude 双通道全通。
+
+### 最快诊断法
+1. **记忆探针一键分层**：同 chatKey 连发两条 role.chat（种暗号/索暗号）——都答对=进程内记忆在，问题只在跨重启持久层；第一条就报错=实体/CLI 层断，看 error 原文。
+2. JSON-RPC `-32600 failed to load configuration (os error 2)` = **codex CLI 配置层**，先查 `~/.codex/config.toml` 引用的文件是否存在，别在插件里翻。
+3. "落盘映射文件在不在"直接判持久层：`~/.dsh/codex-agent/threads.json` / `~/.dsh/claude-agent/chat-sessions.json`；写失败被静默吞 → 检查 catch 是否 `/* ignore */` + 所用标识符是否真的 import 了。
+4. 前端组件嫌疑用 **playwright harness 隔离复现**：`/login` 页 origin + unpkg React UMD + `__ModuleLoader__` mock + eval 真实 client.js，按钮点击/控制台错误全真复现（本次隔离环境双向切换零报错=组件无罪，问题在真实 GUI 环境）。钩子 `React.createElement` 包一层可抓 "type is invalid (#130)" 的 undefined 元素。
+5. dsh-host-auth 挡住 GUI 时：登录密钥=配置级 `cordis.patch.yml accessKeys`（明文）+ 页面 key（只存 SHA-256 摘要）；临时加一个配置 key 重启即进。`/__dsh-*` 自定义前缀路由不过 guard，curl 可直测 host API。
+
+### 铁律
+① `catch { /* ignore */ }` 必须附带最小证据输出（console.error 一行），纯静默吞会把"从未生效"伪装成"一直在工作"；② 用了 `path.xxx` 就必须 `import path from 'node:path'`，解构导入（`{dirname, join}`）时严禁混用；③ 每次动 profile（升级/重装/装插件）后，把 bundles 清单与 node_modules 对照 AGENTS 的"部署形态"节核一遍——实体在编排前。

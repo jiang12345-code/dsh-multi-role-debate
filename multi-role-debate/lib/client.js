@@ -510,7 +510,7 @@ window.__ModuleLoader__.load({
               ),
               React.createElement('div', { className: 'mrd-config-hint' },
                 '下拉选「dsh:」开头 → DSH 引擎直驱（带持久记忆）；手填 → Codex CLI 尝试使用，不支持会回退默认。',
-                codexDefault ? h('span', null, ' Codex 当前默认：' + codexDefault + '。') : null)),
+                codexDefault ? React.createElement('span', null, ' Codex 当前默认：' + codexDefault + '。') : null)),
             React.createElement('div', { className: 'mrd-config-group' },
               React.createElement('div', { className: 'mrd-config-group-title' }, 'Claude 模型'),
               cfgField('模型', React.createElement('input', {
